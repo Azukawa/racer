@@ -215,17 +215,38 @@ t_v3	v_rot_xyz(t_v3 vec, t_v3 rot)
 	return (ret);
 }
 
-float   v_dot(t_v3 va, t_v3 vb)
+float   v3_dot(t_v3 va, t_v3 vb)
 {
     return (va.x * vb.x + va.y * vb.y + va.z * vb.z);
 }
-/*
-t_v3	side_friction(t_v3 velocity, t_race *race, float drift)
+
+float   v2_dot(t_v3 va, t_v3 vb)
 {
-	t_v3	right =  race->pdi
-	velocity = 
-	return ();
-}*/
+    return (va.x * vb.x + va.y * vb.y);
+}
+
+t_v3	rad2vec3(float dir)
+{
+	t_v3	ret = {0,0,0};
+	
+	ret.x = cos(dir);
+	ret.y = sin(dir);
+	return (ret);
+}
+
+//This function is supposed to slow down sideways velocity
+t_v3	tire_friction(t_v3 velocity, t_race *race, float drift)
+{
+	t_v3	right = race->pdir;
+	v_rot_z(&right, 90 * DEG_TO_RAD);
+	t_v3	forvel = v_mult(race->pdir,  v3_dot(velocity, race->pdir));
+	t_v3	rightvel = v_mult(right,  v3_dot(velocity, right));
+
+	velocity = v_mult(v3_add(forvel, rightvel), drift);
+//	velocity = v3_add(forvel, rightvel);
+	return (velocity);
+}
+
 
 void	friction(t_v3 *velocity, t_race *race)
 {
@@ -233,7 +254,7 @@ void	friction(t_v3 *velocity, t_race *race)
 	
 	*velocity = v_mult(*velocity, friction);
 	race->p_rot = race->p_rot * friction;
-	
+//	*velocity = tire_friction(*velocity, race, 0.9995);
 }
 
 t_v3	gravity(t_v3 velocity, float force, uint32_t delta)
@@ -245,7 +266,7 @@ t_v3	gravity(t_v3 velocity, float force, uint32_t delta)
 
 void	move(t_race *race)
 {
-	static	t_v3	velocity 	= {0,0,0};	
+//	static	t_v3	velocity 	= {0, 0, 0};
 	t_v3			temp_vel	= {0, 0, 0};
 	static float	turn		= 0.00003;
 	float			speed		= 0.00185;
@@ -260,11 +281,12 @@ void	move(t_race *race)
 	else if(race->k.r)
 		race->p_rot += turn * delta;
 	race->f_pdir += race->p_rot;
+	race->pdir = rad2vec3(race->f_pdir);
 	v_rot_z(&temp_vel, race->f_pdir);
-	velocity = v3_add(velocity, temp_vel);
-	friction(&velocity, race);
-	velocity = gravity(velocity, 0.0007, delta);
-	race->ppos = v3_add(race->ppos, velocity);
+	race->pvel = v3_add(race->pvel, temp_vel);
+	friction(&race->pvel, race);
+	race->pvel = gravity(race->pvel, 0.0007, delta);
+	race->ppos = v3_add(race->ppos, race->pvel);
 }
 
 //Draws graphics.
@@ -288,6 +310,9 @@ void	graphics(t_rend *rend, t_race	*race)
 	aim.end.x = (((aim.end.x - race->ppos.x) *  -1) + race->ppos.x);
 	aim.end.y = (((aim.end.y - race->ppos.y) *  -1) + race->ppos.y);	
 	draw_vector_line(rend->win_buffer, aim, 0xFF0000);
+//This draws the turqise line in the direction of player velocity(x 10)	
+	aim.end = v32iv3(v3_add(v_mult(race->pvel, 10), race->ppos));
+	draw_vector_line(rend->win_buffer, aim, 0x00FFFF);
 }
 
 static void	loop(t_rend *rend, SDL_Event *e, t_race	*race)
