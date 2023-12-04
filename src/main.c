@@ -257,6 +257,8 @@ void	friction(t_v3 *velocity, t_race *race)
 //	*velocity = tire_friction(*velocity, race, 0.9995);
 }
 
+//Add vertical down force to player velocity each tick
+//to simulate gravity. Modify gravity strenght with force.
 t_v3	gravity(t_v3 velocity, float force, uint32_t delta)
 {
 
@@ -264,9 +266,12 @@ t_v3	gravity(t_v3 velocity, float force, uint32_t delta)
 	return(velocity);
 }
 
+// Apply forces to player velocity and player rotation
+// according to buttons pressed.
+// Then rotate velocity to the direction of player and add rotation to player direction.
+// Then add friction and gravity to player velocity.
 void	move(t_race *race)
 {
-//	static	t_v3	velocity 	= {0, 0, 0};
 	t_v3			temp_vel	= {0, 0, 0};
 	static float	turn		= 0.00003;
 	float			speed		= 0.00185;

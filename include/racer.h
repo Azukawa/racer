@@ -108,6 +108,7 @@ typedef struct	s_race{
 	
 	t_v3	ppos;
 	t_v3	pdir;
+	t_v3	pvel;
 	t_keys	k;
 	float	f_pdir;
 	float	p_rot;
