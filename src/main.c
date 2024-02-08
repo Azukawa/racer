@@ -215,6 +215,16 @@ t_v3	v_rot_xyz(t_v3 vec, t_v3 rot)
 	return (ret);
 }
 
+t_v3	v3_cross(t_v3 va, t_v3 vb)
+{
+	t_v3	result;
+
+	result.x = va.y * vb.z - va.z * vb.y;
+	result.y = va.z * vb.x - va.x * vb.z;
+	result.z = va.x * vb.y - va.y * vb.x;
+	return (result);
+}
+
 float   v3_dot(t_v3 va, t_v3 vb)
 {
     return (va.x * vb.x + va.y * vb.y + va.z * vb.z);
@@ -233,28 +243,69 @@ t_v3	rad2vec3(float dir)
 	ret.y = sin(dir);
 	return (ret);
 }
+float	lerp_1d(float start, float end, float t)
+{
+		return (start + t * (end - start));
+}
+
+t_v3	v3_lerp(t_v3 va, t_v3 vb, float t)
+{
+	t_v3	ret = {0,0,0};
+	
+	ret.x = lerp_1d(va.x, vb.x, t);
+	ret.y = lerp_1d(va.y, vb.y, t);
+	ret.z = lerp_1d(va.z, vb.z, t);
+	return (ret);
+}
+
+
+/*
+*	Multiplying negative values with themselves will always result in positive
+*	values, therefore sqrt() call will always success.
+*	(Additionally, it does not trip onto possible NaN / Inf values.)
+*/
+float	v_len(t_v3 v)
+{
+	return (sqrtf(v.x * v.x + v.y * v.y + v.z * v.z));
+}
+
+t_v3	v_normalize(t_v3 v)
+{
+	t_v3	ret;
+	float		l;
+
+	l = v_len(v);
+	ret.x = v.x / l;
+	ret.y = v.y / l;
+	ret.z = v.z / l;
+	return (ret);
+}
 
 //This function is supposed to slow down sideways velocity
+//and re-direct forward velocity
 t_v3	tire_friction(t_v3 velocity, t_race *race, float drift)
 {
-	t_v3	right = race->pdir;
-	v_rot_z(&right, 90 * DEG_TO_RAD);
-	t_v3	forvel = v_mult(race->pdir,  v3_dot(velocity, race->pdir));
-	t_v3	rightvel = v_mult(right,  v3_dot(velocity, right));
+//	t_v3	right = race->pdir;
+//	v_rot_z(&right, 90 * DEG_TO_RAD);
+//	t_v3	forvel = v_mult(race->pdir,  v3_dot(velocity, race->pdir));
+//	t_v3	rightvel = v_mult(right,  v3_dot(velocity, right));
 
-	velocity = v_mult(v3_add(forvel, rightvel), drift);
+//	velocity = v_mult(v3_add(forvel, rightvel), drift);
 //	velocity = v3_add(forvel, rightvel);
+//	velocity = v3_lerp(race->pvel, forvel, 0.99);
+	v_rot_z(&race->pvel, race->p_rot);
 	return (velocity);
 }
 
 
 void	friction(t_v3 *velocity, t_race *race)
 {
+//	float		friction = 0.998;
 	float		friction = 0.998;
 	
 	*velocity = v_mult(*velocity, friction);
-	race->p_rot = race->p_rot * friction;
-//	*velocity = tire_friction(*velocity, race, 0.9995);
+	race->p_rot = race->p_rot * 0.99;
+//	*velocity = tire_friction(*velocity, race, 0.0001);
 }
 
 //Add vertical down force to player velocity each tick
@@ -264,6 +315,18 @@ t_v3	gravity(t_v3 velocity, float force, uint32_t delta)
 
 	velocity.y = velocity.y + (force * delta);
 	return(velocity);
+}
+
+float	uusfunktio(t_race *race)
+{
+	static float max_speed = 1.5;
+	t_v3	speed = race->pvel;
+//	v_rot_z(&speed, -race->f_pdir);
+	speed.y = fabs(speed.y);
+	if(speed.y > max_speed)
+		return(0);
+//	printf("speed = %f/tick\n", speed.y);
+	return(1);
 }
 
 // Apply forces to player velocity and player rotation
@@ -288,9 +351,17 @@ void	move(t_race *race)
 	race->f_pdir += race->p_rot;
 	race->pdir = rad2vec3(race->f_pdir);
 	v_rot_z(&temp_vel, race->f_pdir);
+//	uusfunktio(race);
 	race->pvel = v3_add(race->pvel, temp_vel);
+	v_rot_z(&race->pvel, race->p_rot * uusfunktio(race));
+
+//	float dot = v3_dot(v_normalize(race->pvel), v_normalize(race->pdir));
+//	dot = fabs(dot);
+//	printf("dot = %f\n", dot);
+	
 	friction(&race->pvel, race);
-	race->pvel = gravity(race->pvel, 0.0007, delta);
+//	race->pvel = tire_friction(race->pvel, race, 0.0001);
+//	race->pvel = gravity(race->pvel, 0.0007, delta);
 	race->ppos = v3_add(race->ppos, race->pvel);
 }
 
